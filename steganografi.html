@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Steganografi - Pengamanan Data Teks pada Citra Digital</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        function textToBinary(text) {
+            var binaryData = [];
+            for (var i = 0; i < text.length; i++) {
+                binaryData.push(text[i].charCodeAt(0).toString(2).padStart(8, '0'));
+            }
+            return binaryData;
+        }
+
+        function binaryToText(binaryData) {
+            var text = "";
+            for (var i = 0; i < binaryData.length; i++) {
+                text += String.fromCharCode(parseInt(binaryData[i], 2));
+            }
+            return text;
+        }
+
+        function hideText() {
+            var imageElement = document.getElementById('image');
+            var canvas = document.createElement('canvas');
+            var context = canvas.getContext('2d');
+            context.drawImage(imageElement, 0, 0);
+
+            var image = context.getImageData(0, 0, canvas.width, canvas.height);
+            var data = image.data;
+
+            var secretText = document.getElementById('secretText').value;
+            var binaryData = textToBinary(secretText);
+            var dataLength = binaryData.length;
+            var requiredPixels = dataLength * 8;
+
+            var totalPixels = data.length / 4;
+
+            if (requiredPixels > totalPixels) {
+                alert("Error: Citra tidak cukup besar untuk menyembunyikan data teks ini.");
+                return;
+            }
+
+            var index = 0;
+
+            for (var i = 0; i < data.length; i += 4) {
+                if (index < dataLength) {
+                    var pixelData = data[i].toString(2).padStart(8, '0');
+                    pixelData = pixelData.substring(0, 6) + binaryData[index].substring(0, 2);
+                    data[i] = parseInt(pixelData, 2);
+                    index++;
+                }
+
+                if (index < dataLength) {
+                    var pixelData = data[i + 1].toString(2).padStart(8, '0');
+                    pixelData = pixelData.substring(0, 6) + binaryData[index].substring(2, 4);
+                    data[i + 1] = parseInt(pixelData, 2);
+                    index++;
+                }
+
+                if (index < dataLength) {
+                    var pixelData = data[i + 2].toString(2).padStart(8, '0');
+                    pixelData = pixelData.substring(0, 6) + binaryData[index].substring(4);
+                    data[i + 2] = parseInt(pixelData, 2);
+                    index++;
+                }
+
+                if (index >= dataLength) {
+                    break;
+                }
+            }
+
+            context.putImageData(image, 0, 0);
+            var stegoImage = canvas.toDataURL();
+            document.getElementById('stegoImage').src = stegoImage;
+            document.getElementById('stegoImage').style.display = 'block';
+            document.getElementById('extractedText').style.display = 'none';
+        }
+
+        function extractText() {
+            var imageElement = document.getElementById('stegoImage');
+            var canvas = document.createElement('canvas');
+            var context = canvas.getContext('2d');
+            context.drawImage(imageElement, 0, 0);
+
+            var image = context.getImageData(0, 0, canvas.width, canvas.height);
+            var data = image.data;
+
+            var binaryData = [];
+            var index = 0;
+
+            for (var i = 0; i < data.length; i += 4) {
+                binaryData.push(data[i].toString(2).slice(-2));
+                binaryData.push(data[i + 1].toString(2).slice(-2));
+                binaryData.push(data[i + 2].toString(2).slice(-2));
+
+                index += 3;
+            }
+
+            var extractedText = binaryToText(binaryData);
+            document.getElementById('extractedText').value = extractedText;
+            document.getElementById('extractedText').style.display = 'block';
+        }
+    </script>
+</head>
+<style>
+    html{
+        background:url('baground.jfif')no-repeat center fixed;
+        -webkit-background-size:cover;
+        -moz-background-size:cover;
+        -o-background-size:cover;
+        background-size:cover;
+    }
+</style>
+<body>  
+    <h1><p align="center"> Steganografi - Pengamanan Data Teks pada Citra Digital</h1>
+    <p align="center"><label for="secretText">Masukkan Teks Rahasia:</label>
+    <br>
+    <textarea id="secretText" rows="4" cols="50"></textarea>
+    <br>
+    <button onclick="hideText()">Sembunyikan Teks</button>
+    <br>
+    <br>
+    <label for="imageUpload">Pilih Citra:</label>
+    <input type="file" id="imageUpload" accept="image/*" onchange="document.getElementById('image').src = window.URL.createObjectURL(this.files[0]);">
+    <br>
+    <br>
+    <button onclick="extractText()">Ekstrak Teks</button>
+    <br>
+    <br>
+    <div>
+        <img id="image" style="max-width: 500px;">
+    </div>
+    <br>
+    <div>
+        <img id="stegoImage" style="max-width: 500px; display: none;">
+    </div>
+    <br>
+    <div>
+        <textarea id="extractedText" rows="4" cols="50" style="display: none;"></textarea>
+    </div>
+</body>
+</html>
